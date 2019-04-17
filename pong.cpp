@@ -5,6 +5,8 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include "GL/freeglut.h"
+#include <FreeImage.h>
+
 #pragma comment(lib, "OpenGL32.lib")
 // keycodes
 
@@ -25,11 +27,11 @@ int racket_height = 80;
 int racket_speed = 3;
 
 // left racket position
-float racket_left_x = 10.0f;
+float racket_left_x = 12.0f;
 float racket_left_y = 50.0f;
 
 // right racket position
-float racket_right_x = width - racket_width - 10;
+float racket_right_x = width - racket_width - 12;
 float racket_right_y = 50;
 
 // ball
@@ -54,7 +56,9 @@ void updateBall();
 void vec2_norm(float &x, float &y);
 std::string int2str(int x);
 void drawFilledCircle(float x, float y, float radius);
-
+void drawTable(float width, float height);
+void Clipping();
+void myMouseFunc(int button, int state, int x, int y);
 
 // program entry point
 int main(int argc, char** argv) {
@@ -66,11 +70,11 @@ int main(int argc, char** argv) {
 
     // Register callback functions   
     glutDisplayFunc(draw);
+    glutMouseFunc(myMouseFunc);
     glutTimerFunc(interval, update, 0);
 
     // setup scene to 2d mode and set draw color to white
     enable2D(width, height);
-    glColor3f(1.0f, 1.0f, 1.0f);
 
     glutKeyboardFunc(keyboard);
     // start the whole thing
@@ -83,6 +87,8 @@ void draw() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
+    //draw table
+    drawTable(width,height);
     // draw rackets
     drawRect(racket_left_x, racket_left_y, racket_width, racket_height);
     drawRect(racket_right_x, racket_right_y, racket_width, racket_height);
@@ -104,7 +110,7 @@ void drawFilledCircle(float x, float y, float radius){
 	
 	//GLfloat radius = 0.8f; //radius
 	float twicePi = 2.0f * PI;
-	
+
 	glBegin(GL_TRIANGLE_FAN);
 		glVertex2f(x, y); // center of circle
 		for(i = 0; i <= triangleAmount;i++) { 
@@ -158,6 +164,40 @@ void drawRect(float x, float y, float width, float height) {
     glEnd();
 }
 
+void drawTable(float width, float height){
+    glClearColor(0.0f, 1.0f, 0.0f, 0.0f);
+	glBegin(GL_QUADS);
+        glVertex2f(1.0f, 1.0f);
+        glVertex2f(4.0f, 1.0f);
+        glVertex2f(4.0f, height);
+        glVertex2f(1.0f, height);
+        glEnd();
+    glBegin(GL_QUADS);
+        glVertex2f(1.0f, 1.0f);
+        glVertex2f(width, 1.0f);
+        glVertex2f(width, 4.0f);
+        glVertex2f(1.0f, 4.0f);
+        glEnd();
+    glBegin(GL_QUADS);
+        glVertex2f(width - 4.0f, 1.0f);
+        glVertex2f(width, 1.0f);
+        glVertex2f(width, height);
+        glVertex2f(width - 4.0f,height);
+        glEnd();
+    glBegin(GL_QUADS);
+        glVertex2f(1.0f, height - 4.0f);
+        glVertex2f(width, height - 4.0f);
+        glVertex2f(width,height);
+        glVertex2f(1.0f, height);
+        glEnd();
+    glBegin(GL_QUADS);
+        glVertex2f((width / 2) - 2.0f, 1.0f);
+        glVertex2f((width / 2) + 2, 1.0f);
+        glVertex2f((width / 2) + 2,height);
+        glVertex2f((width / 2) - 2,height);
+        glEnd();
+}
+
 void keyboard(unsigned char key, int x, int y) {
     // left racket
     if (key == 'w') racket_left_y += racket_speed;
@@ -166,6 +206,13 @@ void keyboard(unsigned char key, int x, int y) {
     // right racket
     if (key == 'i') racket_right_y += racket_speed;
     if (key == 'k') racket_right_y -= racket_speed;
+
+    
+}
+void myMouseFunc(int button, int state, int x, int y) {
+    if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        Clipping();
+    }
 }
 
 void updateBall() {
@@ -200,8 +247,8 @@ void updateBall() {
     // hit left wall?
     if (ball_pos_x < 0) {
         ++score_right;
-        ball_pos_x = width / 2;
-        ball_pos_y = height / 2;
+        ball_pos_x = (width - 4) / 2;
+        ball_pos_y = (height - 4) / 2;
         ball_dir_x = fabs(ball_dir_x); // force it to be positive
         ball_dir_y = 0;
     }
@@ -209,19 +256,19 @@ void updateBall() {
     // hit right wall?
     if (ball_pos_x > width) {
         ++score_left;
-        ball_pos_x = width / 2;
-        ball_pos_y = height / 2;
+        ball_pos_x = (width - 4)/ 2;
+        ball_pos_y = (height -4)/ 2;
         ball_dir_x = -fabs(ball_dir_x); // force it to be negative
         ball_dir_y = 0;
     }
 
     // hit top wall?
-    if (ball_pos_y > height) {
+    if (ball_pos_y > (height -4)) {
         ball_dir_y = -fabs(ball_dir_y); // force it to be negative
     }
 
     // hit bottom wall?
-    if (ball_pos_y < 0) {
+    if (ball_pos_y < 10) {
         ball_dir_y = fabs(ball_dir_y); // force it to be positive
     }
 
@@ -238,3 +285,18 @@ void vec2_norm(float& x, float &y) {
             y *= length;
         }
     }
+
+void Clipping()
+{
+    // Make the BYTE array, factor of 3 because it's RBG.
+    BYTE* pixels = new BYTE[3 * 500 * 200];
+
+    glReadPixels(0, 0, 500, 200, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+
+    // Convert to FreeImage format & save to file
+    FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, 500, 200, 3 * 500, 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
+    FreeImage_Save(FIF_BMP, image, "/home/kevin/Desktop/CG/Clipping.bmp", 0);
+
+    FreeImage_Unload(image);
+    delete [] pixels;
+}
